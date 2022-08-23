@@ -1,0 +1,3 @@
+[submodule "spiderlightning"]
+	path = spiderlightning
+	url = https://github.com/deislabs/spiderlightning
