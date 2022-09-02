@@ -1,0 +1,73 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        // REDDOG: RECEIPT GENERATION SERVICE
+        {
+            "label": "RedDog: Build ReceiptGenerationService (Rust)",
+            "type": "process",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--target",
+                "wasm32-wasi",
+                "--release",
+                "--manifest-path",
+                "${workspaceFolder}/RedDog.ReceiptGenerationService/Cargo.toml"
+            ],
+            "problemMatcher": "$rustc",
+            "group": "build"
+        },
+        {
+            "label": "RedDog: Clean ReceiptGenerationService (Rust)",
+            "type": "shell",
+            "command": "cargo clean",
+            "options": {
+                "cwd": "${workspaceFolder}/RedDog.ReceiptGenerationService/"
+            },
+            "problemMatcher": "$rustc"
+        },
+        {
+            "label": "RedDog: Run ReceiptGenerationService (slight)",
+            "type": "process",
+            "command": "./target/release/slight",
+            "args": [
+                "-c",
+                "${workspaceFolder}/RedDog.ReceiptGenerationService/slightfile.toml",
+                "run",
+                "-m",
+                "${workspaceFolder}/RedDog.ReceiptGenerationService/target/wasm32-wasi/release/receipt_generation_service.wasm"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/spiderlightning/",
+                "env": {
+                    "RUST_LOG": "slight=trace,receipt_generation_service=trace",
+                    "AZAPPCONFIG_ENDPOINT": "",
+                    "AZAPPCONFIG_KEYID": "",
+                    "AZAPPCONFIG_KEYSECRET": ""
+                }
+            },
+            "problemMatcher": "$rustc"
+        },
+        // SPIDERLIGHTNING: SLIGHT CLI
+        {
+            "label": "SpiderLightning CLI (slight): Install Dependencies",
+            "type": "shell",
+            "command": "make install-deps",
+            "options": {
+                "cwd": "${workspaceFolder}/spiderlightning/"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "SpiderLightning CLI (slight): Build CLI",
+            "type": "shell",
+            "command": "make build",
+            "options": {
+                "cwd": "${workspaceFolder}/spiderlightning/"
+            },
+            "problemMatcher": "$rustc"
+        }
+    ]
+}
