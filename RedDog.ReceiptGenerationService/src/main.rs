@@ -1,44 +1,98 @@
 use anyhow::Result;
-//use serde::{Deserialize};
+use cloudevents::{Data, Event};
+use serde::{Deserialize, Serialize};
 
 use mq::*;
-wit_bindgen_rust::import!("/home/madmax/src/azure/reddog-code-slight/spiderlightning/wit/mq.wit"); // Path is relative to Cargo.toml
+wit_bindgen_rust::import!("../spiderlightning/wit/mq.wit"); // Path is relative to Cargo.toml
 wit_error_rs::impl_error!(mq::Error);
 
 use kv::*;
-wit_bindgen_rust::import!("/home/madmax/src/azure/reddog-code-slight/spiderlightning/wit/kv.wit"); // Path is relative to Cargo.toml
+wit_bindgen_rust::import!("../spiderlightning/wit/kv.wit"); // Path is relative to Cargo.toml
 wit_error_rs::impl_error!(kv::Error);
 
-// There's much more data in an OrderSummary, but we only care
-// about the Order ID for use in the Blob Name. Otherwise, we'll
-// write the same data as received.
-// #[derive(Deserialize, Debug)]
-// #[serde(rename_all = "camelCase")]
-// pub struct OrderSummary {
-//     pub order_id: String
-// }
-
 fn main() -> Result<()> {
-    println!("Kicking off the receipt service to pull from orders topic");
-    let mq = Mq::open("orders/subscriptions/receipt-generation-service")?;
+    println!("Starting Receipt Generation Service.");
 
-    // TODO: This should be a loop or sink
-    // TODO: This might be a cloud event that we need to unwrap.
-    let message = mq.receive()?;
-    println!("Received: {:#?}", &message);
+    println!("Opening connection to MQ...");
+    //let mq = Mq::open("orders/subscriptions/receipt-generation-service")?;
+    let mq = Mq::open("slight-test/subscriptions/slight-example")?;
 
-    let order_summary_string = String::from_utf8(message)?;
-    println!("As String: {:#?}", &order_summary_string);
-
-    // let order_summary: OrderSummary = serde_json::from_str(&order_summary_string).unwrap();
-    // println!("Deserialized to get OrderID: {:#?}", order_summary.order_id);
-    
-    println!("Writing Order Summary (receipt) to storage: {}", &order_summary_string);
-
+    println!("Opening connection to KV...");
     let kv = Kv::open("receipts")?;
-    let key = "thisismykey"; //format!("{}.json", order_summary.order_id);
-    kv.set(&key, order_summary_string.as_bytes())?;
-    println!("Adding full string value to {:#?} key", &key);
 
-    Ok(())
+    // TODO: Since mq.receive will timeout with an error eventually, we should consider
+    // a retry policy that supports that, but also will err out for realz if not just that.
+    println!("Receiving messages from MQ...");
+    loop {
+        println!("Receiving message from MQ...");
+        let received = mq.receive();
+        // This will throw an error after X seconds (timeout) if there are no messages
+        // on the queue/subscription:
+        //   Error::ErrorWithDescription("failed to receive message from Azure Service Bus")
+        // We want to wait and re-loop/continue if that happens, but actually bail on
+        // other errors. We're using match for now and ignoring all errors.
+        match received {
+            Ok(message) => {
+                let message_string = std::str::from_utf8(&message)?;
+                println!("Received: {:#?}.", message_string);
+
+                // TODO: Fix the cloudevent deserialization.
+                //let cloudevent: Event = serde_json::from_str(&message_string).unwrap();
+                //let data: Option<Data> = cloudevent.data().cloned();
+                //let order_summary: OrderSummary = serde_json::from_str(
+                //    &data.expect("Received CloudEvent, but it had no Data property set.")
+                //        .to_string(),
+                //)
+                //.unwrap();
+                let order_summary: OrderSummary = serde_json::from_str(&message_string).unwrap();
+
+                let key = format!("{}.json", order_summary.order_id);
+                println!("Writing messsage to KV...");
+                kv.set(&key, message_string.as_bytes())?;
+            }
+            Err(e) => {
+                println!("Ignoring error: {}. Looping back.", e);
+                // TODO: Should we add a wait here? We sort of get an automatic
+                // wait from mq.receive(), so I think we're good.
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all(deserialize = "camelCase", serialize = "camelCase"))]
+struct OrderSummary {
+    #[serde(default)]
+    order_id: String,
+    #[serde(default)]
+    order_date: String,
+    #[serde(default)]
+    order_completed_date: String,
+    #[serde(default)]
+    store_id: String,
+    #[serde(default)]
+    first_name: String,
+    #[serde(default)]
+    last_name: String,
+    #[serde(default)]
+    loyalty_id: String,
+    #[serde(default)]
+    order_items: Vec<OrderItemSummary>,
+    #[serde(default)]
+    order_total: f32,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all(deserialize = "camelCase", serialize = "camelCase"))]
+struct OrderItemSummary {
+    #[serde(default)]
+    product_id: u32,
+    #[serde(default)]
+    product_name: String,
+    #[serde(default)]
+    quantity: u32,
+    #[serde(default)]
+    unit_cost: f32,
+    #[serde(default)]
+    unit_price: f32,
 }
