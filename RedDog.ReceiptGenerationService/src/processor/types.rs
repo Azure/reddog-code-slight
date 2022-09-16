@@ -15,8 +15,8 @@ pub struct OrderSummary {
     pub order_id: String,
     #[serde(default)]
     pub order_date: String,
-    #[serde(default)]
-    pub order_completed_date: String,
+    // #[serde(default)]
+    // pub order_completed_date: String,
     #[serde(default)]
     pub store_id: String,
     #[serde(default)]

@@ -5,7 +5,7 @@ fn main() -> Result<()> {
     println!("Starting Receipt Generation Service.");
 
     let receipt_processor_config = ReceiptProcessorConfig {
-        source_name: String::from("slight-test/subscriptions/slight-example"),
+        source_name: String::from("orders/subscriptions/receipt-generation-service"),
         destination_name: String::from("receipts"),
     };
     let receipt_processor = ReceiptProcessor::new(receipt_processor_config);

@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use anyhow::{Result, bail};
 use cloudevents::Event;
 
@@ -83,12 +85,16 @@ impl ReceiptProcessor {
                 bail!(ProcessingError::MessageFormatError)
             },
             Ok(cloudevent) => {
+                println!("cloudevent deserialized...");
                 match cloudevent.data().cloned() {
                     None => {
                         bail!(ProcessingError::MessageFormatError)
                     },
                     Some(cloudevent_data) => {
-                        let order_summary: OrderSummary = serde_json::from_str(cloudevent_data.to_string().as_str())?;
+                        println!("cloudevent data cloned: {:#?}", cloudevent_data.to_string());
+                        let as_val: serde_json::Value = cloudevent_data.try_into()?;
+                        let order_summary: OrderSummary = serde_json::from_value(as_val)?;
+                        println!("order summary deserialized...");
                         let key = format!("{}.json", order_summary.order_id);
         
                         println!("Writing receipt...");
