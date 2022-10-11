@@ -33,12 +33,11 @@ az deployment group create -n reddog -g $RG -f ./bicep/main.bicep -p userDefined
 # K3d
 # Create cluster if it does not exist...
 # k3d cluster create k3d-reddog -p '8083:80@loadbalancer' --k3s-arg '--disable=traefik@server:0'
+k3d cluster create wasm-cluster --image ghcr.io/deislabs/containerd-wasm-shims/examples/k3d:latest -p "8080:80@loadbalancer" --agents 2
+kubectl apply -f https://github.com/deislabs/containerd-wasm-shims/releases/download/v0.3.0/slight_runtime.yaml
 
 # Install Dapr control plane in the cluster (uses current config)
 dapr init -k
-
-# Install metrics-server (TODO: CHECK WITH STEVE ON APPROACH)
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
 # Create the reddog namespace
 kubectl create -f ./cluster/namespace.yaml
@@ -57,3 +56,36 @@ kubectl apply -f ./cluster/deployments/virtual-customers.yaml
 # Check all is well
 kubectl get pods -n reddog
 # kubectl logs receipt-generation-service-podname -n reddog
+
+###############################################################################
+# Build OCI artifact
+###############################################################################
+
+# Login to supported container registry (docker, aks acr login)
+az acr login -n awkwardindustries
+
+# Build and push (from project root where Dockerfile is located)
+cd ../../
+docker build -t awkwardindustries.azurecr.io/reddog/receipt-generation-service:slight
+docker push awkwardindustries.azurecr.io/reddog/receipt-generation-service:slight
+cd ./deploy/manual
+
+###############################################################################
+# Add regcred for ACR
+###############################################################################
+
+ACRNAME=awkwardindustries
+ACR_FQDN=$(az acr show -n $ACRNAME --query "{acrLoginServer:loginServer}" -o tsv)
+ACR_USER=$(az acr credential show -n $ACRNAME --query "username" -o tsv)
+ACR_PASSWD=$(az acr credential show -n $ACRNAME --query "passwords[0].value" -o tsv)
+kubectl create -n reddog secret docker-registry regcred \
+  --docker-server=$ACR_FQDN \
+  --docker-username=$ACR_USER \
+  --docker-password=$ACR_PASSWD
+
+###############################################################################
+# Redeploy Receipt Service -- on slight
+###############################################################################
+
+kubectl delete deployment receipt-generation-service -n reddog
+kubectl apply -f ./cluster/deployments/receipt-generation-service-slight.yaml

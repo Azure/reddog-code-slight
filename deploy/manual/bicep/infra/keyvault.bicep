@@ -1,5 +1,5 @@
 param keyVaultName string
-param userDefinedServicePrincipalAppId string
+param userDefinedServicePrincipalObjectId string
 param location string
 
 resource keyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
@@ -16,7 +16,7 @@ resource keyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
     tenantId: subscription().tenantId
     accessPolicies: [
       {
-        objectId: userDefinedServicePrincipalAppId
+        objectId: userDefinedServicePrincipalObjectId
         permissions: {
           secrets: [
             'all'

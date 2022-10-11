@@ -1,7 +1,7 @@
 param location string = resourceGroup().location
 param uniqueSeed string = '${subscription().subscriptionId}-${resourceGroup().name}'
 param uniqueSuffix string = 'reddog-${uniqueString(uniqueSeed)}'
-param userDefinedServicePrincipalAppId string = ''
+param userDefinedServicePrincipalObjectId string = '55ffc7eb-f3ac-4953-a42a-a8644d183d24'
 param serviceBusNamespaceName string = 'sb-${uniqueSuffix}'
 param keyVaultName string = 'kv-${uniqueSuffix}'
 param configStoreName string = 'config-${uniqueSuffix}'
@@ -21,7 +21,7 @@ module keyVaultModule 'infra/keyvault.bicep' = {
   name: '${deployment().name}--keyvault'
   params: {
     keyVaultName: keyVaultName
-    userDefinedServicePrincipalAppId: userDefinedServicePrincipalAppId
+    userDefinedServicePrincipalObjectId: userDefinedServicePrincipalObjectId
     location: location
   }
 }
