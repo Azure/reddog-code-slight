@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: receipt-generation-service-slight
+  namespace: reddog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: receipt-generation-service-slight
+  template:
+    metadata:
+      labels:
+        app: receipt-generation-service-slight
+    spec:
+      runtimeClassName: wasmtime-slight
+      containers:
+        - name: receipt-generation-service-slight
+          image: awkwardindustries.azurecr.io/reddog/receipt-generation-service:slight
+          command: ["/"]
+          env:
+          - name: AZAPPCONFIG_ENDPOINT
+            value: ""
+          - name: AZAPPCONFIG_KEYID
+            value: ""
+          - name: AZAPPCONFIG_KEYSECRET
+            value: ""
+      imagePullSecrets:
+        - name: regcred
